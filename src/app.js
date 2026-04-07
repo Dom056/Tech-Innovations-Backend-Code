@@ -2,31 +2,24 @@ const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
 
+// Import routes
+const faultRoutes = require("./routes/fault.route"); // ✅ correct file
+
 const app = express();
 
-// For Middleware
-app.use(cors());              // allow frontend requests
-app.use(express.json());      // parse JSON body
-app.use(morgan("dev"));       // log requests
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(morgan("dev"));
 
-// Test route (IMPORTANT - make sure server works)
+// Test route
 app.get("/", (req, res) => {
   res.json({
     message: "AR Maintenance Backend is running"
   });
 });
 
-// Example route to get faults (replace with real logic later)
-app.get("/api/faults", (req, res) => {
-  res.json([
-    {
-      id: 1,
-      title: "Crack in wall",
-      location: "Tunnel A",
-      severity: "high"
-    }
-  ]);
-});
-
+// Use fault routes
+app.use("/api/faults", faultRoutes); // ✅ this replaces your old route
 
 module.exports = app;
