@@ -1,19 +1,11 @@
 const express = require("express");
 const router = express.Router();
-const pool = require("../database/db");
+const faultController = require("../controllers/fault.controller");
 
 // GET all faults
-router.get("/", async (req, res) => {
-  try {
-    const result = await pool.query(
-      "SELECT id, title, status, priority FROM issues ORDER BY created_at DESC"
-    );
+router.get("/", faultController.getAllFaults);
 
-    res.json(result.rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Database error" });
-  }
-});
+// GET one fault by id
+router.get("/:id", faultController.getFaultById);
 
 module.exports = router;
