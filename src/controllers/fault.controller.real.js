@@ -1,108 +1,31 @@
-//This will be the code used once the backend is connected to the database.
-//Copy code and place it into the fault.controller.js file once testing is done.
+// This file handles HTTP requests and responses for fault routes.
 
-/*const pool = require("../database/db");
-const { v4: uuidv4 } = require("uuid");
+const faultService = require("../services/fault.service");
 
-// GET all faults with optional filtering and sorting
+// GET all faults
 exports.getAllFaults = async (req, res) => {
-  const { status, priority, sort } = req.query;
-
-  const allowedStatuses = ["reported", "in_progress", "resolved"];
-  const allowedPriorities = ["low", "medium", "high"];
-  const allowedSorts = ["newest", "oldest"];
-
-  // Validate status filter
-  if (status && !allowedStatuses.includes(status)) {
-    return res.status(400).json({
-      success: false,
-      error: "Invalid status filter"
-    });
-  }
-
-  // Validate priority filter
-  if (priority && !allowedPriorities.includes(priority)) {
-    return res.status(400).json({
-      success: false,
-      error: "Invalid priority filter"
-    });
-  }
-
-  // Validate sort value
-  if (sort && !allowedSorts.includes(sort)) {
-    return res.status(400).json({
-      success: false,
-      error: "Invalid sort value"
-    });
-  }
-
   try {
-    let query = `
-      SELECT 
-        id,
-        title,
-        description,
-        status,
-        priority,
-        created_at,
-        updated_at
-      FROM issues
-    `;
-
-    const queryParams = [];
-    const conditions = [];
-
-    // Add filters if provided
-    if (status) {
-      conditions.push("status = ?");
-      queryParams.push(status);
-    }
-
-    if (priority) {
-      conditions.push("priority = ?");
-      queryParams.push(priority);
-    }
-
-    // Add WHERE clause only if filters exist
-    if (conditions.length > 0) {
-      query += ` WHERE ${conditions.join(" AND ")}`;
-    }
-
-    // Sort by created_at
-    if (sort === "oldest") {
-      query += " ORDER BY created_at ASC";
-    } else {
-      // Default to newest first
-      query += " ORDER BY created_at DESC";
-    }
-
-    const [rows] = await pool.query(query, queryParams);
+    const faults = await faultService.getAllFaults(req.query);
 
     res.status(200).json({
       success: true,
-      count: rows.length,
-      data: rows
+      count: faults.length,
+      data: faults
     });
   } catch (err) {
-    console.error("Error fetching faults:", err);
-    res.status(500).json({
+    res.status(400).json({
       success: false,
-      error: "Database error"
+      error: err.message
     });
   }
 };
 
 // GET one fault by id
 exports.getFaultById = async (req, res) => {
-  const { id } = req.params;
-
   try {
-    const [rows] = await pool.query(
-      "SELECT * FROM issues WHERE id = ?",
-      [id]
-    );
+    const fault = await faultService.getFaultById(req.params.id);
 
-    if (rows.length === 0) {
+    if (!fault) {
       return res.status(404).json({
         success: false,
         error: "Fault not found"
@@ -111,7 +34,7 @@ exports.getFaultById = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: rows[0]
+      data: fault
     });
   } catch (err) {
     console.error("Error fetching fault:", err);
@@ -124,200 +47,66 @@ exports.getFaultById = async (req, res) => {
 
 // CREATE a new fault
 exports.createFault = async (req, res) => {
-  const { title, description, status, priority } = req.body;
-
-  const allowedStatuses = ["reported", "in_progress", "resolved"];
-  const allowedPriorities = ["low", "medium", "high"];
-
-  if (!title) {
-    return res.status(400).json({
-      success: false,
-      error: "Title is required"
-    });
-  }
-
-  const finalStatus = status || "reported";
-  const finalPriority = priority || "medium";
-
-  if (!allowedStatuses.includes(finalStatus)) {
-    return res.status(400).json({
-      success: false,
-      error: "Invalid status value"
-    });
-  }
-
-  if (!allowedPriorities.includes(finalPriority)) {
-    return res.status(400).json({
-      success: false,
-      error: "Invalid priority value"
-    });
-  }
-
   try {
-    const faultId = uuidv4();
-
-    await pool.query(
-      `INSERT INTO issues (
-        id,
-        title,
-        description,
-        status,
-        priority,
-        created_at,
-        updated_at
-      )
-      VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
-      [faultId, title, description || null, finalStatus, finalPriority]
-    );
-
-    const [rows] = await pool.query(
-      "SELECT * FROM issues WHERE id = ?",
-      [faultId]
-    );
+    const newFault = await faultService.createFault(req.body);
 
     res.status(201).json({
       success: true,
       message: "Fault created successfully",
-      data: rows[0]
+      data: newFault
     });
   } catch (err) {
-    console.error("Error creating fault:", err);
-    res.status(500).json({
+    res.status(400).json({
       success: false,
-      error: "Database error"
+      error: err.message
     });
   }
 };
 
-// UPDATE a fault's status and log history
+// UPDATE a fault's status
 exports.updateFaultStatus = async (req, res) => {
-  const { id } = req.params;
-  const { status, created_by } = req.body;
-
-  const allowedStatuses = ["reported", "in_progress", "resolved"];
-
-  if (!status) {
-    return res.status(400).json({
-      success: false,
-      error: "Status is required"
-    });
-  }
-
-  if (!allowedStatuses.includes(status)) {
-    return res.status(400).json({
-      success: false,
-      error: "Invalid status value"
-    });
-  }
-
   try {
-    const [existingRows] = await pool.query(
-      "SELECT * FROM issues WHERE id = ?",
-      [id]
+    const updatedFault = await faultService.updateFaultStatus(
+      req.params.id,
+      req.body
     );
 
-    if (existingRows.length === 0) {
+    if (!updatedFault) {
       return res.status(404).json({
         success: false,
         error: "Fault not found"
       });
     }
 
-    const existingFault = existingRows[0];
-    const oldStatus = existingFault.status;
-
-    await pool.query(
-      `UPDATE issues
-       SET status = ?, updated_at = NOW()
-       WHERE id = ?`,
-      [status, id]
-    );
-
-    // Add update history record
-    const updateId = uuidv4();
-
-    await pool.query(
-      `INSERT INTO issue_updates (
-        id,
-        issue_id,
-        created_at,
-        created_by,
-        update_type,
-        description,
-        status_from,
-        status_to,
-        new_issue_id
-      )
-      VALUES (?, ?, NOW(), ?, ?, ?, ?, ?, ?)`,
-      [
-        updateId,
-        id,
-        created_by || null,
-        "status_change",
-        `Status changed from ${oldStatus} to ${status}`,
-        oldStatus,
-        status,
-        null
-      ]
-    );
-
-    const [updatedRows] = await pool.query(
-      "SELECT * FROM issues WHERE id = ?",
-      [id]
-    );
-
     res.status(200).json({
       success: true,
       message: "Fault status updated successfully",
-      data: updatedRows[0]
+      data: updatedFault
     });
   } catch (err) {
-    console.error("Error updating fault status:", err);
-    res.status(500).json({
+    res.status(400).json({
       success: false,
-      error: "Database error"
+      error: err.message
     });
   }
 };
 
 // GET all updates for one fault
 exports.getFaultUpdates = async (req, res) => {
-  const { id } = req.params;
-
   try {
-    const [faultRows] = await pool.query(
-      "SELECT id FROM issues WHERE id = ?",
-      [id]
-    );
+    const updates = await faultService.getFaultUpdates(req.params.id);
 
-    if (faultRows.length === 0) {
+    if (updates === null) {
       return res.status(404).json({
         success: false,
         error: "Fault not found"
       });
     }
 
-    const [updateRows] = await pool.query(
-      `SELECT 
-        id,
-        issue_id,
-        created_at,
-        created_by,
-        update_type,
-        description,
-        status_from,
-        status_to,
-        new_issue_id
-       FROM issue_updates
-       WHERE issue_id = ?
-       ORDER BY created_at DESC`,
-      [id]
-    );
-
     res.status(200).json({
       success: true,
-      count: updateRows.length,
-      data: updateRows
+      count: updates.length,
+      data: updates
     });
   } catch (err) {
     console.error("Error fetching fault updates:", err);
@@ -330,85 +119,28 @@ exports.getFaultUpdates = async (req, res) => {
 
 // CREATE a new update for one fault
 exports.addFaultUpdate = async (req, res) => {
-  const { id } = req.params;
-  const {
-    created_by,
-    update_type,
-    description,
-    status_from,
-    status_to,
-    new_issue_id
-  } = req.body;
-
-  if (!update_type) {
-    return res.status(400).json({
-      success: false,
-      error: "Update type is required"
-    });
-  }
-
-  if (!description) {
-    return res.status(400).json({
-      success: false,
-      error: "Description is required"
-    });
-  }
-
   try {
-    const [faultRows] = await pool.query(
-      "SELECT id FROM issues WHERE id = ?",
-      [id]
+    const newUpdate = await faultService.addFaultUpdate(
+      req.params.id,
+      req.body
     );
 
-    if (faultRows.length === 0) {
+    if (!newUpdate) {
       return res.status(404).json({
         success: false,
         error: "Fault not found"
       });
     }
 
-    const updateId = uuidv4();
-
-    await pool.query(
-      `INSERT INTO issue_updates (
-        id,
-        issue_id,
-        created_at,
-        created_by,
-        update_type,
-        description,
-        status_from,
-        status_to,
-        new_issue_id
-      )
-      VALUES (?, ?, NOW(), ?, ?, ?, ?, ?, ?)`,
-      [
-        updateId,
-        id,
-        created_by || null,
-        update_type,
-        description,
-        status_from || null,
-        status_to || null,
-        new_issue_id || null
-      ]
-    );
-
-    const [rows] = await pool.query(
-      "SELECT * FROM issue_updates WHERE id = ?",
-      [updateId]
-    );
-
     res.status(201).json({
       success: true,
       message: "Fault update added successfully",
-      data: rows[0]
+      data: newUpdate
     });
   } catch (err) {
-    console.error("Error creating fault update:", err);
-    res.status(500).json({
+    res.status(400).json({
       success: false,
-      error: "Database error"
+      error: err.message
     });
   }
-}; */
+};

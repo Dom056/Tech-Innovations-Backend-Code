@@ -1,3 +1,5 @@
+// This file defines all fault-related API routes.
+
 const express = require("express");
 const router = express.Router();
 const faultController = require("../controllers/fault.controller");
