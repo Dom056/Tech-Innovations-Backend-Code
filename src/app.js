@@ -22,4 +22,13 @@ app.get("/", (req, res) => {
 // Use fault routes
 app.use("/api/faults", faultRoutes); // ✅ this replaces your old route
 
+// 404 handler for unknown routes
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    error: "Route not found"
+  });
+});
+
+
 module.exports = app;
