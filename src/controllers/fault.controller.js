@@ -293,3 +293,21 @@ exports.addFaultUpdate = async (req, res) => {
     data: newUpdate
   });
 };
+
+// GET dashboard summary for faults
+exports.getFaultSummary = async (req, res) => {
+  const summary = {
+    total: mockFaults.length,
+    reported: mockFaults.filter(fault => fault.status === "reported").length,
+    in_progress: mockFaults.filter(fault => fault.status === "in_progress").length,
+    resolved: mockFaults.filter(fault => fault.status === "resolved").length,
+    high_priority: mockFaults.filter(fault => fault.priority === "high").length,
+    medium_priority: mockFaults.filter(fault => fault.priority === "medium").length,
+    low_priority: mockFaults.filter(fault => fault.priority === "low").length
+  };
+
+  res.status(200).json({
+    success: true,
+    data: summary
+  });
+};

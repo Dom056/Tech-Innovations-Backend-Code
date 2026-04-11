@@ -2,6 +2,24 @@
 
 const faultService = require("../services/fault.service");
 
+// GET dashboard summary for faults
+exports.getFaultSummary = async (req, res) => {
+  try {
+    const summary = await faultService.getFaultSummary();
+
+    res.status(200).json({
+      success: true,
+      data: summary
+    });
+  } catch (err) {
+    console.error("Error fetching fault summary:", err);
+    res.status(500).json({
+      success: false,
+      error: "Database error"
+    });
+  }
+};
+
 // GET all faults
 exports.getAllFaults = async (req, res) => {
   try {

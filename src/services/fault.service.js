@@ -8,6 +8,11 @@ const {
   allowedSorts
 } = require("../utils/fault.validators");
 
+// Get dashboard summary for faults
+exports.getFaultSummary = async () => {
+  return await faultModel.getFaultSummary();
+};
+
 // Get all faults with validation
 exports.getAllFaults = async ({ status, priority, sort }) => {
   // Validate filters if provided

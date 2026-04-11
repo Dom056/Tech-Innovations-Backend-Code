@@ -4,6 +4,9 @@ const express = require("express");
 const router = express.Router();
 const faultController = require("../controllers/fault.controller");
 
+// GET dashboard summary for faults
+router.get("/summary", faultController.getFaultSummary);
+
 // GET all faults
 router.get("/", faultController.getAllFaults);
 

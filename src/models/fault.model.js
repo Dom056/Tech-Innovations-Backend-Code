@@ -2,6 +2,23 @@
 
 const pool = require("../database/db");
 
+// Get summary data for dashboard
+exports.getFaultSummary = async () => {
+  const [rows] = await pool.query(`
+    SELECT
+      COUNT(*) AS total,
+      SUM(CASE WHEN status = 'reported' THEN 1 ELSE 0 END) AS reported,
+      SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) AS in_progress,
+      SUM(CASE WHEN status = 'resolved' THEN 1 ELSE 0 END) AS resolved,
+      SUM(CASE WHEN priority = 'high' THEN 1 ELSE 0 END) AS high_priority,
+      SUM(CASE WHEN priority = 'medium' THEN 1 ELSE 0 END) AS medium_priority,
+      SUM(CASE WHEN priority = 'low' THEN 1 ELSE 0 END) AS low_priority
+    FROM issues
+  `);
+
+  return rows[0];
+};
+
 // Get all faults with optional filters and sorting
 exports.getAllFaults = async ({ status, priority, sort }) => {
   let query = `
