@@ -41,12 +41,13 @@ let mockFaultUpdates = [
   }
 ];
 
-// GET all faults with optional filtering
+// GET all faults with optional filtering and sorting
 exports.getAllFaults = async (req, res) => {
-  const { status, priority } = req.query;
+  const { status, priority, sort } = req.query;
 
   const allowedStatuses = ["reported", "in_progress", "resolved"];
   const allowedPriorities = ["low", "medium", "high"];
+  const allowedSorts = ["newest", "oldest"];
 
   // Validate status if provided
   if (status && !allowedStatuses.includes(status)) {
@@ -64,6 +65,14 @@ exports.getAllFaults = async (req, res) => {
     });
   }
 
+  // Validate sort if provided
+  if (sort && !allowedSorts.includes(sort)) {
+    return res.status(400).json({
+      success: false,
+      error: "Invalid sort value"
+    });
+  }
+
   let filteredFaults = [...mockFaults];
 
   // Filter by status if provided
@@ -77,6 +86,18 @@ exports.getAllFaults = async (req, res) => {
   if (priority) {
     filteredFaults = filteredFaults.filter(
       fault => fault.priority === priority
+    );
+  }
+
+  // Sort by created_at
+  if (sort === "oldest") {
+    filteredFaults.sort(
+      (a, b) => new Date(a.created_at) - new Date(b.created_at)
+    );
+  } else {
+    // Default to newest first
+    filteredFaults.sort(
+      (a, b) => new Date(b.created_at) - new Date(a.created_at)
     );
   }
 

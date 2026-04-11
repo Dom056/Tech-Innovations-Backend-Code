@@ -4,12 +4,13 @@
 /*const pool = require("../database/db");
 const { v4: uuidv4 } = require("uuid");
 
-// GET all faults with optional filtering
+// GET all faults with optional filtering and sorting
 exports.getAllFaults = async (req, res) => {
-  const { status, priority } = req.query;
+  const { status, priority, sort } = req.query;
 
   const allowedStatuses = ["reported", "in_progress", "resolved"];
   const allowedPriorities = ["low", "medium", "high"];
+  const allowedSorts = ["newest", "oldest"];
 
   // Validate status filter
   if (status && !allowedStatuses.includes(status)) {
@@ -24,6 +25,14 @@ exports.getAllFaults = async (req, res) => {
     return res.status(400).json({
       success: false,
       error: "Invalid priority filter"
+    });
+  }
+
+  // Validate sort value
+  if (sort && !allowedSorts.includes(sort)) {
+    return res.status(400).json({
+      success: false,
+      error: "Invalid sort value"
     });
   }
 
@@ -54,12 +63,18 @@ exports.getAllFaults = async (req, res) => {
       queryParams.push(priority);
     }
 
-    // Add WHERE only if filters exist
+    // Add WHERE clause only if filters exist
     if (conditions.length > 0) {
       query += ` WHERE ${conditions.join(" AND ")}`;
     }
 
-    query += " ORDER BY created_at DESC";
+    // Sort by created_at
+    if (sort === "oldest") {
+      query += " ORDER BY created_at ASC";
+    } else {
+      // Default to newest first
+      query += " ORDER BY created_at DESC";
+    }
 
     const [rows] = await pool.query(query, queryParams);
 
