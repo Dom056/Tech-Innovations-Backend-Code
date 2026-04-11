@@ -1,188 +1,3 @@
-/* const pool = require("../database/db");
-const { v4: uuidv4 } = require("uuid");
-
-// GET all faults
-exports.getAllFaults = async (req, res) => {
-  try {
-    // Fetch a simple list of faults for overview pages
-    const [rows] = await pool.query(`
-      SELECT 
-        id,
-        title,
-        status,
-        priority,
-        created_at
-      FROM issues
-      ORDER BY created_at DESC
-    `);
-
-    res.status(200).json({
-      success: true,
-      count: rows.length,
-      data: rows
-    });
-  } catch (err) {
-    console.error("Error fetching faults:", err);
-    res.status(500).json({
-      success: false,
-      error: "Database error"
-    });
-  }
-};
-
-// GET one fault by id
-exports.getFaultById = async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    // Fetch one fault using its id
-    const [rows] = await pool.query(
-      "SELECT * FROM issues WHERE id = ?",
-      [id]
-    );
-
-    // Return 404 if no fault exists with that id
-    if (rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: "Fault not found"
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      data: rows[0]
-    });
-  } catch (err) {
-    console.error("Error fetching fault:", err);
-    res.status(500).json({
-      success: false,
-      error: "Database error"
-    });
-  }
-};
-
-// POST create a new fault
-exports.createFault = async (req, res) => {
-  const { title, description, status, priority } = req.body;
-
-  // Basic validation
-  if (!title) {
-    return res.status(400).json({
-      success: false,
-      error: "Title is required"
-    });
-  }
-
-  const allowedStatuses = ["reported", "in_progress", "resolved"];
-
-  const finalStatus = status || "reported";
-  const finalPriority = priority || "medium";
-
-  if (!allowedStatuses.includes(finalStatus)) {
-    return res.status(400).json({
-      success: false,
-      error: "Invalid status value"
-    });
-  }
-
-  try {
-    // Generate UUID to match schema design
-    const faultId = uuidv4();
-
-    await pool.query(
-      `INSERT INTO issues (
-        id,
-        title,
-        description,
-        status,
-        priority,
-        created_at,
-        updated_at
-      )
-      VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
-      [faultId, title, description || null, finalStatus, finalPriority]
-    );
-
-    const [rows] = await pool.query(
-      "SELECT * FROM issues WHERE id = ?",
-      [faultId]
-    );
-
-    res.status(201).json({
-      success: true,
-      message: "Fault created successfully",
-      data: rows[0]
-    });
-  } catch (err) {
-    console.error("Error creating fault:", err);
-    res.status(500).json({
-      success: false,
-      error: "Database error"
-    });
-  }
-};
-
-// PATCH update a fault's status
-exports.updateFaultStatus = async (req, res) => {
-  const { id } = req.params;
-  const { status } = req.body;
-
-  const allowedStatuses = ["reported", "in_progress", "resolved"];
-
-  if (!status) {
-    return res.status(400).json({
-      success: false,
-      error: "Status is required"
-    });
-  }
-
-  if (!allowedStatuses.includes(status)) {
-    return res.status(400).json({
-      success: false,
-      error: "Invalid status value"
-    });
-  }
-
-  try {
-    const [existingRows] = await pool.query(
-      "SELECT * FROM issues WHERE id = ?",
-      [id]
-    );
-
-    if (existingRows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: "Fault not found"
-      });
-    }
-
-    await pool.query(
-      `UPDATE issues
-       SET status = ?, updated_at = NOW()
-       WHERE id = ?`,
-      [status, id]
-    );
-
-    const [updatedRows] = await pool.query(
-      "SELECT * FROM issues WHERE id = ?",
-      [id]
-    );
-
-    res.status(200).json({
-      success: true,
-      message: "Fault status updated successfully",
-      data: updatedRows[0]
-    });
-  } catch (err) {
-    console.error("Error updating fault status:", err);
-    res.status(500).json({
-      success: false,
-      error: "Database error"
-    });
-  }
-}; */
-
 // TEMPORARY MOCK DATA (used until database is ready)
 const mockFaults = [
   {
@@ -226,12 +41,49 @@ let mockFaultUpdates = [
   }
 ];
 
-// GET all faults
+// GET all faults with optional filtering
 exports.getAllFaults = async (req, res) => {
+  const { status, priority } = req.query;
+
+  const allowedStatuses = ["reported", "in_progress", "resolved"];
+  const allowedPriorities = ["low", "medium", "high"];
+
+  // Validate status if provided
+  if (status && !allowedStatuses.includes(status)) {
+    return res.status(400).json({
+      success: false,
+      error: "Invalid status filter"
+    });
+  }
+
+  // Validate priority if provided
+  if (priority && !allowedPriorities.includes(priority)) {
+    return res.status(400).json({
+      success: false,
+      error: "Invalid priority filter"
+    });
+  }
+
+  let filteredFaults = [...mockFaults];
+
+  // Filter by status if provided
+  if (status) {
+    filteredFaults = filteredFaults.filter(
+      fault => fault.status === status
+    );
+  }
+
+  // Filter by priority if provided
+  if (priority) {
+    filteredFaults = filteredFaults.filter(
+      fault => fault.priority === priority
+    );
+  }
+
   res.status(200).json({
     success: true,
-    count: mockFaults.length,
-    data: mockFaults
+    count: filteredFaults.length,
+    data: filteredFaults
   });
 };
 
