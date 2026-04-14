@@ -1,6 +1,6 @@
 // This file contains the main fault logic using temporary mock data.
 
-const { v4: uuidv4 } = require("uuid");
+const { randomUUID } = require("crypto");
 const {
   allowedStatuses,
   allowedPriorities,
@@ -128,7 +128,7 @@ exports.createFault = async ({ title, description, status, priority }) => {
   }
 
   const newFault = {
-    id: uuidv4(),
+    id: randomUUID(),
     title,
     description: description || null,
     status: finalStatus,
@@ -161,7 +161,7 @@ exports.updateFaultStatus = async (id, { status, created_by }) => {
   fault.status = status;
 
   const statusUpdate = {
-    id: uuidv4(),
+    id: randomUUID(),
     issue_id: id,
     created_at: new Date().toISOString(),
     created_by: created_by || "system_user",
@@ -214,7 +214,7 @@ exports.addFaultUpdate = async (id, body) => {
   }
 
   const newUpdate = {
-    id: uuidv4(),
+    id: randomUUID(),
     issue_id: id,
     created_at: new Date().toISOString(),
     created_by: created_by || "system_user",

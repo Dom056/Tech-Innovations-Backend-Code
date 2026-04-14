@@ -2,7 +2,7 @@
 
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const { v4: uuidv4 } = require("uuid");
+const { randomUUID } = require("crypto");
 const authModel = require("../models/auth.model");
 const { isValidEmail, allowedRoles } = require("../utils/auth.validators");
 
@@ -42,7 +42,7 @@ exports.registerUser = async ({ name, email, password, role }) => {
 
   // Hash the password before storing it
   const password_hash = await bcrypt.hash(password, 10);
-  const userId = uuidv4();
+  const userId = randomUUID();
 
   await authModel.createUser({
     id: userId,

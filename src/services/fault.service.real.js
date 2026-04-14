@@ -1,6 +1,6 @@
 // This file contains the main fault logic and validation before database queries run.
 
-const { v4: uuidv4 } = require("uuid");
+const { randomUUID } = require("crypto");
 const faultModel = require("../models/fault.model");
 const {
   allowedStatuses,
@@ -53,10 +53,10 @@ exports.createFault = async ({ title, description, status, priority }) => {
     throw new Error("Invalid priority value");
   }
 
-  const faultId = uuidv4();
+  const faultId = randomUUID();
 
   await faultModel.createFault({
-    id: faultId,
+    id: randomUUID(),
     title,
     description: description || null,
     status: finalStatus,
@@ -87,7 +87,7 @@ exports.updateFaultStatus = async (id, { status, created_by }) => {
   await faultModel.updateFaultStatus(id, status);
 
   await faultModel.createFaultUpdate({
-    id: uuidv4(),
+    id: randomUUID(),
     issue_id: id,
     created_by: created_by || null,
     update_type: "status_change",
@@ -136,7 +136,7 @@ exports.addFaultUpdate = async (id, body) => {
     return null;
   }
 
-  const updateId = uuidv4();
+  const updateId = randomUUID();
 
   await faultModel.createFaultUpdate({
     id: updateId,

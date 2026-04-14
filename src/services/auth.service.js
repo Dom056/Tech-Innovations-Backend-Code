@@ -4,7 +4,7 @@ console.log("MOCK auth.service.js loaded");
 
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const { v4: uuidv4 } = require("uuid");
+const { randomUUID } = require("crypto");
 
 // Temporary in-memory users list
 let mockUsers = [];
@@ -44,7 +44,7 @@ exports.registerUser = async (userData) => {
   const password_hash = await bcrypt.hash(password, 10);
 
   const newUser = {
-    id: uuidv4(),
+    id: randomUUID(),
     name,
     email,
     password_hash,
