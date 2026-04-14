@@ -1,28 +1,23 @@
-// This file contains temporary mock auth logic until the database is ready.
-
-console.log("MOCK auth.service.js loaded");
+// This file contains the main auth logic.
 
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { v4: uuidv4 } = require("uuid");
-
-// Temporary in-memory users list
-let mockUsers = [];
+const authModel = require("../models/auth.model");
+const { isValidEmail, allowedRoles } = require("../utils/auth.validators");
 
 // Register a new user
-exports.registerUser = async (userData) => {
-  if (!userData) {
-    throw new Error("Request body is required");
-  }
-
-  const { name, email, password, role } = userData;
-
+exports.registerUser = async ({ name, email, password, role }) => {
   if (!name) {
     throw new Error("Name is required");
   }
 
   if (!email) {
     throw new Error("Email is required");
+  }
+
+  if (!isValidEmail(email)) {
+    throw new Error("Invalid email");
   }
 
   if (!password) {
@@ -33,45 +28,35 @@ exports.registerUser = async (userData) => {
     throw new Error("Password must be at least 6 characters");
   }
 
-  // Check if email already exists
-  const existingUser = mockUsers.find((user) => user.email === email);
+  const finalRole = role || "engineer";
+
+  if (!allowedRoles.includes(finalRole)) {
+    throw new Error("Invalid role");
+  }
+
+  const existingUser = await authModel.getUserByEmail(email);
 
   if (existingUser) {
     throw new Error("Email already in use");
   }
 
-  // Hash password before storing it
+  // Hash the password before storing it
   const password_hash = await bcrypt.hash(password, 10);
+  const userId = uuidv4();
 
-  const newUser = {
-    id: uuidv4(),
+  await authModel.createUser({
+    id: userId,
     name,
     email,
     password_hash,
-    role: role || "engineer",
-    created_at: new Date().toISOString()
-  };
+    role: finalRole
+  });
 
-  mockUsers.push(newUser);
-
-  // Return safe user data only
-  return {
-    id: newUser.id,
-    name: newUser.name,
-    email: newUser.email,
-    role: newUser.role,
-    created_at: newUser.created_at
-  };
+  return await authModel.getUserById(userId);
 };
 
 // Login an existing user
-exports.loginUser = async (loginData) => {
-  if (!loginData) {
-    throw new Error("Request body is required");
-  }
-
-  const { email, password } = loginData;
-
+exports.loginUser = async ({ email, password }) => {
   if (!email) {
     throw new Error("Email is required");
   }
@@ -80,28 +65,27 @@ exports.loginUser = async (loginData) => {
     throw new Error("Password is required");
   }
 
-  // Find user by email
-  const user = mockUsers.find((user) => user.email === email);
+  const user = await authModel.getUserByEmail(email);
 
   if (!user) {
     throw new Error("Invalid email or password");
   }
 
-  // Compare password with stored hash
+  // Compare the entered password with the stored hash
   const passwordMatches = await bcrypt.compare(password, user.password_hash);
 
   if (!passwordMatches) {
     throw new Error("Invalid email or password");
   }
 
-  // Create token
+  // Create a JWT token for the user
   const token = jwt.sign(
     {
       id: user.id,
       email: user.email,
       role: user.role
     },
-    process.env.JWT_SECRET || "dev_secret_key",
+    process.env.JWT_SECRET,
     { expiresIn: "1d" }
   );
 
