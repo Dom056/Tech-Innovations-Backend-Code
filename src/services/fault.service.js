@@ -1,21 +1,71 @@
-// This file contains the main fault logic and validation before database queries run.
+// This file contains the main fault logic using temporary mock data.
 
 const { v4: uuidv4 } = require("uuid");
-const faultModel = require("../models/fault.model");
 const {
   allowedStatuses,
   allowedPriorities,
   allowedSorts
 } = require("../utils/fault.validators");
 
+// Temporary mock faults
+const mockFaults = [
+  {
+    id: "1",
+    title: "Tunnel crack detected",
+    status: "reported",
+    priority: "high",
+    created_at: "2026-04-11"
+  },
+  {
+    id: "2",
+    title: "Signal failure",
+    status: "in_progress",
+    priority: "medium",
+    created_at: "2026-04-10"
+  }
+];
+
+// Temporary mock fault updates
+let mockFaultUpdates = [
+  {
+    id: "1",
+    issue_id: "1",
+    created_at: "2026-04-11T10:00:00.000Z",
+    created_by: "engineer_1",
+    update_type: "comment",
+    description: "Initial inspection completed.",
+    status_from: null,
+    status_to: null,
+    new_issue_id: null
+  },
+  {
+    id: "2",
+    issue_id: "1",
+    created_at: "2026-04-11T11:00:00.000Z",
+    created_by: "engineer_2",
+    update_type: "status_change",
+    description: "Status changed from reported to in_progress.",
+    status_from: "reported",
+    status_to: "in_progress",
+    new_issue_id: null
+  }
+];
+
 // Get dashboard summary for faults
 exports.getFaultSummary = async () => {
-  return await faultModel.getFaultSummary();
+  return {
+    total: mockFaults.length,
+    reported: mockFaults.filter((fault) => fault.status === "reported").length,
+    in_progress: mockFaults.filter((fault) => fault.status === "in_progress").length,
+    resolved: mockFaults.filter((fault) => fault.status === "resolved").length,
+    high_priority: mockFaults.filter((fault) => fault.priority === "high").length,
+    medium_priority: mockFaults.filter((fault) => fault.priority === "medium").length,
+    low_priority: mockFaults.filter((fault) => fault.priority === "low").length
+  };
 };
 
-// Get all faults with validation
+// Get all faults with validation, filtering, and sorting
 exports.getAllFaults = async ({ status, priority, sort }) => {
-  // Validate filters if provided
   if (status && !allowedStatuses.includes(status)) {
     throw new Error("Invalid status filter");
   }
@@ -28,15 +78,39 @@ exports.getAllFaults = async ({ status, priority, sort }) => {
     throw new Error("Invalid sort value");
   }
 
-  return await faultModel.getAllFaults({ status, priority, sort });
+  let filteredFaults = [...mockFaults];
+
+  // Filter by status
+  if (status) {
+    filteredFaults = filteredFaults.filter((fault) => fault.status === status);
+  }
+
+  // Filter by priority
+  if (priority) {
+    filteredFaults = filteredFaults.filter((fault) => fault.priority === priority);
+  }
+
+  // Sort by created_at
+  if (sort === "oldest") {
+    filteredFaults.sort(
+      (a, b) => new Date(a.created_at) - new Date(b.created_at)
+    );
+  } else {
+    // Default to newest first
+    filteredFaults.sort(
+      (a, b) => new Date(b.created_at) - new Date(a.created_at)
+    );
+  }
+
+  return filteredFaults;
 };
 
 // Get one fault by id
 exports.getFaultById = async (id) => {
-  return await faultModel.getFaultById(id);
+  return mockFaults.find((fault) => fault.id === id) || null;
 };
 
-// Create a new fault with defaults and validation
+// Create a new fault
 exports.createFault = async ({ title, description, status, priority }) => {
   if (!title) {
     throw new Error("Title is required");
@@ -53,17 +127,18 @@ exports.createFault = async ({ title, description, status, priority }) => {
     throw new Error("Invalid priority value");
   }
 
-  const faultId = uuidv4();
-
-  await faultModel.createFault({
-    id: faultId,
+  const newFault = {
+    id: uuidv4(),
     title,
     description: description || null,
     status: finalStatus,
-    priority: finalPriority
-  });
+    priority: finalPriority,
+    created_at: new Date().toISOString()
+  };
 
-  return await faultModel.getFaultById(faultId);
+  mockFaults.push(newFault);
+
+  return newFault;
 };
 
 // Update a fault's status and create a history record
@@ -76,39 +151,41 @@ exports.updateFaultStatus = async (id, { status, created_by }) => {
     throw new Error("Invalid status value");
   }
 
-  const existingFault = await faultModel.getFaultById(id);
-
-  if (!existingFault) {
-    return null;
-  }
-
-  const oldStatus = existingFault.status;
-
-  await faultModel.updateFaultStatus(id, status);
-
-  await faultModel.createFaultUpdate({
-    id: uuidv4(),
-    issue_id: id,
-    created_by: created_by || null,
-    update_type: "status_change",
-    description: `Status changed from ${oldStatus} to ${status}`,
-    status_from: oldStatus,
-    status_to: status,
-    new_issue_id: null
-  });
-
-  return await faultModel.getFaultById(id);
-};
-
-// Get all updates for one fault
-exports.getFaultUpdates = async (id) => {
-  const fault = await faultModel.getFaultById(id);
+  const fault = mockFaults.find((fault) => fault.id === id);
 
   if (!fault) {
     return null;
   }
 
-  return await faultModel.getFaultUpdates(id);
+  const oldStatus = fault.status;
+  fault.status = status;
+
+  const statusUpdate = {
+    id: uuidv4(),
+    issue_id: id,
+    created_at: new Date().toISOString(),
+    created_by: created_by || "system_user",
+    update_type: "status_change",
+    description: `Status changed from ${oldStatus} to ${status}`,
+    status_from: oldStatus,
+    status_to: status,
+    new_issue_id: null
+  };
+
+  mockFaultUpdates.push(statusUpdate);
+
+  return fault;
+};
+
+// Get all updates for one fault
+exports.getFaultUpdates = async (id) => {
+  const fault = mockFaults.find((fault) => fault.id === id);
+
+  if (!fault) {
+    return null;
+  }
+
+  return mockFaultUpdates.filter((update) => update.issue_id === id);
 };
 
 // Add a new update for one fault
@@ -130,24 +207,25 @@ exports.addFaultUpdate = async (id, body) => {
     throw new Error("Description is required");
   }
 
-  const fault = await faultModel.getFaultById(id);
+  const fault = mockFaults.find((fault) => fault.id === id);
 
   if (!fault) {
     return null;
   }
 
-  const updateId = uuidv4();
-
-  await faultModel.createFaultUpdate({
-    id: updateId,
+  const newUpdate = {
+    id: uuidv4(),
     issue_id: id,
-    created_by: created_by || null,
+    created_at: new Date().toISOString(),
+    created_by: created_by || "system_user",
     update_type,
     description,
     status_from: status_from || null,
     status_to: status_to || null,
     new_issue_id: new_issue_id || null
-  });
+  };
 
-  return await faultModel.getFaultUpdateById(updateId);
+  mockFaultUpdates.push(newUpdate);
+
+  return newUpdate;
 };
