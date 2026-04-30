@@ -5,6 +5,7 @@ const morgan = require("morgan");
 // Import routes
 const faultRoutes = require("./routes/fault.route");
 const authRoutes = require("./routes/auth.route");
+const fleetRoutes = require("./routes/fleet.route");
 
 const app = express();
 
@@ -16,15 +17,18 @@ app.use(morgan("dev"));
 // Auth routes
 app.use("/api/auth", authRoutes);
 
+// Fault routes
+app.use("/api/faults", faultRoutes);
+
+// Fleet routes
+app.use("/api/fleet", fleetRoutes);
+
 // Test route
 app.get("/", (req, res) => {
   res.json({
     message: "AR Maintenance Backend is running"
   });
 });
-
-// Fault routes
-app.use("/api/faults", faultRoutes);
 
 // 404 handler for unknown routes
 app.use((req, res) => {
