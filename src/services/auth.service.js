@@ -6,8 +6,17 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { randomUUID } = require("crypto");
 
-// Temporary in-memory users list
-let mockUsers = [];
+// Temporary in-memory users list with a default admin user
+let mockUsers = [
+  {
+    id: "admin-1",
+    name: "admin",
+    email: "admin@test.com",
+    password_hash: bcrypt.hashSync("password123", 10), // default password
+    role: "admin",
+    created_at: new Date().toISOString()
+  }
+];
 
 // Register a new user
 exports.registerUser = async (userData) => {

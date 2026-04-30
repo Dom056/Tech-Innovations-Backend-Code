@@ -6,7 +6,8 @@ const morgan = require("morgan");
 const faultRoutes = require("./routes/fault.route");
 const authRoutes = require("./routes/auth.route");
 const fleetRoutes = require("./routes/fleet.route");
-
+const { protect } = require("./middleware/auth.middleware");
+const { authoriseRoles } = require("./middleware/role.middleware");
 const app = express();
 
 // Middleware
@@ -21,7 +22,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/faults", faultRoutes);
 
 // Fleet routes
-app.use("/api/fleet", fleetRoutes);
+app.use("/api/fleet", protect, fleetRoutes);
 
 // Test route
 app.get("/", (req, res) => {
